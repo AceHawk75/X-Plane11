@@ -1,0 +1,9 @@
+linus/CFY/ElevatorTrimValue	int[16] n CFY Elevator Trim value from Offset
+linus/CFY/ElevatorTrimControl int[8] n CFY Elevator Trim Control from OFFSET
+linus/CFY/SpoilerLever	int[16] n CFY spoiler lever position from OFFSET
+linus/CFY/StartLever1	int[16] n CFY Start Lever 1 position from OFFSET
+linus/CFY/StartLever2	int[16] n CFY Start Lever 2 position from OFFSET
+linus/CFY/XpndrMode		int[8] n CFY Transponder Mode value from Offset
+linus/CFY/ATDisen		int[8] n CFY AutoThrottle value test
+linus/CFY/FlapLever		int[16] n CFY Flap Lever position
+linus/CFY/TOGASen		int[8] n CFY AutoThrottle TOGA switch
