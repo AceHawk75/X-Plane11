@@ -1,4 +1,4 @@
--- Rotate MD80 integration script
+-- Rotate MD80 lua integration script
 -- Started June 2018
 -- re-written Sep 2018
 
@@ -149,7 +149,7 @@ if(PLANE_ICAO == "MD88") then
 --		FlapLever_MD88 = 0.0000608995 * FlapLeverPos + 0.000164376
 		FlapLever_MD88 = -2.81365e-9 * FlapLeverPos^2 + 0.000103263 * FlapLeverPos + 0.0579996
 		if FlapLever_MD88 ~= MD88_FlapLeverPos[0] then
---			print("FlapLeverPos: " .. FlapLeverPos .. ", MD88_Flaps: " .. MD88_FlapLeverPos[0] .. ", FlapLever_MD88: " .. FlapLever_MD88)
+			print("FlapLeverPos: " .. FlapLeverPos .. ", MD88_Flaps: " .. MD88_FlapLeverPos[0] .. ", FlapLever_MD88: " .. FlapLever_MD88)
 			MD88_FlapLeverPos[0] = FlapLever_MD88	
 			
 		end
@@ -203,10 +203,19 @@ if(PLANE_ICAO == "MD88") then
 	set_button_assignment( (8*40) + 14, "linus/MD88/ToggleAutoThrottle" )
 -- end MD88 Auto Throttle switch
 
+-- code for MD88 AutoPilot switch
+	-- button assignment
+	set_button_assignment( (8*40) + 16, "Rotate/md80/autopilot/ap_toggle" )
+-- end MD88 AutoPilot switch
+
+
+
 -- Start AT_Disengage
 -- Checks the state of the CFY AT Disengage and adjusts the MD88 A/T State accordingly
+-- we should change this to a command instead
 	dataref("AT_Disen_MD88","linus/CFY/ATDisen","writeable",0)
 	dataref("MD88_ATDisc_light","Rotate/md80/autopilot/at_disc_active","writeable")
+
 	function updateMD88ATDisen()
 --		print("ATDisen: " .. ATDisen .. ", MD88_AT_Switch: " .. AT_Disen_MD88 )
 		if AT_Disen_MD88 == 0 then
@@ -222,27 +231,29 @@ if(PLANE_ICAO == "MD88") then
 		end
 	end
 	do_often("updateMD88ATDisen()")
--- End AT_Disengage
 
+	-- End AT_Disengage
+
+	
 -- Start TOGA_Engage
 -- Checks the state of the CFY TOGA Engage and commands TOGA accordingly
-	dataref("TOGA_MD88","linus/CFY/TOGASen","writeable",0)
+--	dataref("TOGA_MD88","linus/CFY/TOGASen","writeable",0)
 --	dataref("MD88_ATDisc_light","Rotate/md80/autopilot/at_disc_active","writeable")
-	function updateMD88TOGASen()
+--	function updateMD88TOGASen()
 --		print("TOGASen: " .. TOGA_MD88 .. ", MD88_AT_Switch: " .. AT_Disen_MD88 )
-		if TOGA_MD88 == 0 then
+--		if TOGA_MD88 == 0 then
 
 			--command_once("linus/MD88/ToggleAutoThrottle")
-			command_once("Rotate/md80/autopilot/to_ga_button")
+--			command_once("Rotate/md80/autopilot/to_ga_button")
 --			AT_arm_sw = 0
 --			command_once("linus/MD88/ToggleAutoThrottle")
 --			MD88_ATDisc_light = 1
 --			AT_value[0] = -1
 --			TOGA_MD88 = 1
-
-		end
-	end
-	do_often("updateMD88TOGASen()")
+--
+--		end
+--	end
+--	do_often("updateMD88TOGASen()")
 -- End TOGA_Engage
 
 
@@ -250,13 +261,37 @@ if(PLANE_ICAO == "MD88") then
 --	set_button_assignment( (8*40) + 8, "sim/flight_controls/pitch_trim_up" )
 	set_button_assignment( (8*40) + 8, "Rotate/md80/systems/v_trim_handle_up")
 	set_button_assignment( (8*40) + 6, "Rotate/md80/systems/v_trim_handle_dn" )
+
+--  mod 9/21/22 Giving up on the trim control. seems to be fine with just controling the handles with the button and the CFY
+--  handling the rest via A/P control
+
 --	DataRef("MD88_ElevatorTrim", "sim/flightmodel/controls/elv_trim")
 --	DataRef("ElevatorTrimValue", "linus/CFY/ElevatorTrimValue", "writeable")
+--	DataRef("TrimIndic", "linus/CFY/ElevatorTrimIndic","writeable")
 --	DataRef("ElevatorTrimControl", "linus/CFY/ElevatorTrimControl", "writeable")
 --	function MD88ElevatorTrim()
 --		print("ElevatorTrimvalue: " .. ElevatorTrimValue .. ", TrimControl: " .. ElevatorTrimControl .. ", MD88Elevator: " .. MD88_ElevatorTrim)
+--		local InterpretTrim
+--		InterpretTrim = (MD88_ElevatorTrim * 26639) - 10256
+--		InterpretTrim = (ElevatorTrimValue * 0.0000375389) + 0.385 
+--		InterpretTrim = (ElevatorTrimValue * 0.0000282501) + 0.254232
+--		ElevatorTrimValue = InterpretTrim
+--		ElevatorTrimValue = (MD88_ElevatorTrim * 26639) - 10256
+--		print("MD88_ElevatorTrim: " .. MD88_ElevatorTrim .. ", ElevatorTrimvalue: " .. ElevatorTrimValue .. ", interpreted: " .. InterpretTrim .. ", Indic: " .. TrimIndic)
+--		print("MD88_ElevatorTrim: " .. MD88_ElevatorTrim .. ", ElevatorTrimvalue: " .. ElevatorTrimValue .. ", Indicator: " .. TrimIndic)
+
 --	end
 --	do_often ("MD88ElevatorTrim()")
+
+-- Test a dataref / XPUIPC value
+-- prints a dataref representing a test XPUIPC value continuously
+
+	DataRef("XPUIPC_Value", "linus/CFY/ElevatorTrimValue", "writeable")
+	function printXPUIPC()
+--		print("XPUIPC_VALUE: " .. XPUIPC_Value)
+	end
+	do_often("printXPUIPC()")
+-- End Test a dataref
 
 --Start XpndrMode
 -- sets the transponder based on the setting selected on the OpenCockpit module
@@ -288,4 +323,15 @@ if(PLANE_ICAO == "MD88") then
 	end
 	do_sometimes("updateMD88Xpndr()")
 --End XpndrMode
+
+	--Start Parking Brake update
+	--Updates the cockpit MD88 Parking Brake button when CFY PB latch is engaged
+	DataRef("ParkingBrakeLatch", "sim/flightmodel/controls/parkbrake","readonly")
+	MD88_ParkBrakeButton = dataref_table("Rotate/md80/systems/parking_brake_toggle_clicked")
+	function updateMD88ParkBrakeButton()
+		if ParkingBrakeLatch ~= MD88_ParkBrakeButton then
+			MD88_ParkBrakeButton[0] = ParkingBrakeLatch
+		end
+	end
+	do_sometimes("updateMD88ParkBrakeButton()")
 end
