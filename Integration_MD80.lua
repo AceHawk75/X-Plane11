@@ -144,13 +144,58 @@ if(PLANE_ICAO == "MD88") then
 	MD88_FlapLeverPos = create_dataref_table("Rotate/md80/systems/flap_handle_drag_position_ratio", "Float")
 	local FlapLever_MD88
 --	FlapLever_MD88 = 0.0000608995 * FlapLeverPos + 0.000164376
-	FlapLever_MD88 = -2.81365e-9 * FlapLeverPos^2 + 0.000103263 * FlapLeverPos + 0.0579996
+--	FlapLever_MD88 = -2.81365e-9 * FlapLeverPos^2 + 0.000103263 * FlapLeverPos + 0.0579996
 	function updateMD88FlapLever()
 --		FlapLever_MD88 = 0.0000608995 * FlapLeverPos + 0.000164376
-		FlapLever_MD88 = -2.81365e-9 * FlapLeverPos^2 + 0.000103263 * FlapLeverPos + 0.0579996
-		if FlapLever_MD88 ~= MD88_FlapLeverPos[0] then
-			print("FlapLeverPos: " .. FlapLeverPos .. ", MD88_Flaps: " .. MD88_FlapLeverPos[0] .. ", FlapLever_MD88: " .. FlapLever_MD88)
-			MD88_FlapLeverPos[0] = FlapLever_MD88	
+--		FlapLever_MD88 = -2.81365e-9 * FlapLeverPos^2 + 0.000103263 * FlapLeverPos + 0.0579996
+		if FlapLever_MD88 ~= FlapLeverPos then
+--			print("FlapLeverPos: " .. FlapLeverPos .. ", MD88_Flaps: " .. MD88_FlapLeverPos[0] .. ", FlapLever_MD88: " .. FlapLever_MD88)
+--			MD88_FlapLeverPos[0] = FlapLever_MD88	
+		
+			--first, command a new flaps position accordingly
+			if FlapLeverPos == 0 then
+				-- flaps retracted. CFY = 0
+				-- flaps MD88 = RET
+				MD88_FlapLeverPos[0] = .1	
+			
+			elseif FlapLeverPos == 2047 then
+				-- flaps CFY = 1
+				-- flaps MD88 = T.O. 0
+				MD88_FlapLeverPos[0] = .36	
+			
+			elseif FlapLeverPos == 4095 then
+				-- flaps CFY = 2
+				-- flaps MD88 = 11
+				MD88_FlapLeverPos[0] = .54	
+			
+			elseif FlapLeverPos == 6143 then
+				-- flaps CFY = 5
+				-- flaps MD88 = 15
+				MD88_FlapLeverPos[0] = .6	
+
+			elseif FlapLeverPos == 8191 then
+				-- flaps CFY = 10
+				-- flaps MD88 = 28
+				MD88_FlapLeverPos[0] = .75	
+
+			elseif FlapLeverPos == 10239 then
+				-- flaps CFY = 15
+				-- flaps MD88 = 40
+				MD88_FlapLeverPos[0] = .95	
+
+			elseif FlapLeverPos == 14335 then
+				-- flaps CFY = 25
+				-- flaps MD88 = 40 (still)
+				MD88_FlapLeverPos[0] = .95	
+
+			elseif FlapLeverPos == 16383 then
+				-- flaps CFY = 30
+				-- flaps MD88 = 40 (still)
+				MD88_FlapLeverPos[0] = .95	
+			end
+			
+			--second, equalize the req and the position
+			ReqFlaps = FlapLeverPos
 			
 		end
 	end

@@ -3,6 +3,10 @@
 
 
 if (PLANE_ICAO =="B752") then
+--Field of view set for MD88
+	FieldOfView = dataref_table("sim/graphics/view/field_of_view_deg")
+	FieldOfView[0] = 75
+
 -- Start Override Throttle off
 -- Turns off the override of the throttles
 	Override_Throttle = dataref_table("sim/operation/override/override_throttles")
@@ -24,6 +28,69 @@ if (PLANE_ICAO =="B752") then
 --	end
 --	do_every_frame("MouseHandlerOn()")
 
+
+-- Start FlapLeverPos
+-- Checks the state of the CFY Flap Lever and adjusts the B752 Flap Lever accordingly
+	DataRef("FlapLeverPos", "linus/CFY/FlapLever","readonly",0)
+	DataRef("B752_FlapLeverPos","sim/flightmodel/controls/flaprqst", "writeable")
+	local FlapLever_B752
+	FlapLever_B752 = 0
+
+	function updateB752FlapLever()
+
+
+		if FlapLever_B752 ~= FlapLeverPos then
+--			print("FlapLeverPos: " .. FlapLeverPos .. ", B752_Flaps: " .. B752_FlapLeverPos .. ", FlapLever_B752: " .. FlapLever_B752)
+		
+			--first, command a new flaps position accordingly
+			if FlapLeverPos == 0 then
+				-- flaps retracted. CFY = 0
+				-- flaps B752 = 0 (UP)
+				B752_FlapLeverPos = 0	
+			
+			elseif FlapLeverPos == 2047 then
+				-- flaps CFY = 1
+				-- flaps B752 = 1
+				B752_FlapLeverPos = .16667
+			
+			elseif FlapLeverPos == 4095 then
+				-- flaps CFY = 2
+				-- flaps B752 = 5
+				B752_FlapLeverPos = .3333
+			
+			elseif FlapLeverPos == 6143 then
+				-- flaps CFY = 5
+				-- flaps B752 = 15
+				B752_FlapLeverPos = .5	
+
+			elseif FlapLeverPos == 8191 then
+				-- flaps CFY = 10
+				-- flaps B752 = 20
+				B752_FlapLeverPos = .66667	
+
+			elseif FlapLeverPos == 10239 then
+				-- flaps CFY = 15
+				-- flaps B752 = 25
+				B752_FlapLeverPos = .833333
+
+			elseif FlapLeverPos == 14335 then
+				-- flaps CFY = 25
+				-- flaps B752 = 30
+				B752_FlapLeverPos = 1
+
+			elseif FlapLeverPos == 16383 then
+				-- flaps CFY = 30
+				-- flaps B752 = 30 (still)
+				MD88_FlapLeverPos = 1
+			end
+			
+			--second, equalize the req and the position
+			FlapLever_B752 = FlapLeverPos
+			
+		end
+	end
+	do_often("updateB752FlapLever()")
+-- End FlapLeverPos
 
 
 
