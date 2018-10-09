@@ -18,6 +18,31 @@ if (PLANE_ICAO =="B752") then
 	clear_all_button_assignments()
 	set_button_assignment( (0*40) + 5, "sim/flight_controls/landing_gear_up" )
 	set_button_assignment( (0*40) + 6, "sim/flight_controls/landing_gear_down" )
+
+
+	set_button_assignment( (8*40) + 19, "sim/general/rot_up" )
+	set_button_assignment( (8*40) + 20, "sim/general/hat_switch_up_right" )
+	set_button_assignment( (8*40) + 21, "sim/general/rot_right" )
+	set_button_assignment( (8*40) + 22, "sim/general/hat_switch_down_right" )
+	set_button_assignment( (8*40) + 23, "sim/general/rot_down" )
+	set_button_assignment( (8*40) + 24, "sim/general/hat_switch_down_left" )
+	set_button_assignment( (8*40) + 25, "sim/general/rot_left" )
+	set_button_assignment( (8*40) + 26, "sim/general/hat_switch_up_left" )
+
+	-- setting nullzone, sensitivity and augment
+	set( "sim/joystick/joystick_pitch_nullzone",      0.000 )
+	set( "sim/joystick/joystick_roll_nullzone",       0.000 )
+	set( "sim/joystick/joystick_heading_nullzone",    0.000 )
+	set( "sim/joystick/joystick_pitch_sensitivity",   0.605 )
+	set( "sim/joystick/joystick_roll_sensitivity",    0.608 )
+	set( "sim/joystick/joystick_heading_sensitivity", 0.634 )
+	set( "sim/joystick/joystick_pitch_augment",       0.626 )
+	set( "sim/joystick/joystick_roll_augment",        0.620 )
+	set( "sim/joystick/joystick_heading_augment",     0.634 )
+	
+-- Sound stuff
+	knob1 = load_WAV_file(AIRCRAFT_PATH .. "sounds/cockpit/knob-1.wav")
+	knob2 = load_WAV_file(AIRCRAFT_PATH .. "sounds/cockpit/knob-2.wav")
 	
 	
 	--COMMENTED OUT 10/2/2018
@@ -43,6 +68,227 @@ if (PLANE_ICAO =="B752") then
 --	end
 --	do_every_frame("MouseHandlerOn()")
 
+-- Start MCP integration
+	-- Start HDG Selector
+		DataRef("MCP_HDG","sim/cockpit/autopilot/heading_mag","writeable")
+		--	DataRef("B752_HDG","757Avionics/ap/hdg_act","writeble")
+		B752_HDG = dataref_table("757Avionics/ap/hdg_act")
+		-- On start, make the MCP = B752 HDG selector
+		if MCP_HDG ~= B752_HDG[0] then
+			-- equalizing MCP to B752
+			MCP_HDG = B752_HDG[0]
+		else
+			-- nothing to do
+		end
+		
+		-- set the prev hdg var and values
+		MCP_prev_HDG = MCP_HDG
+		B752_prev_HDG = B752_HDG[0]
+
+		-- First function. change by MCP to the B752
+		function HDG_mod_MCP()
+			--print("MCP: " .. MCP_HDG .. ", MCP_prev: " .. MCP_prev_HDG .. ", B752_HDG: " .. B752_HDG[0] .. ", B752_Prev: " .. B752_prev_HDG)
+			-- checks if the MCP hdg has changed and if so updates the B752 HDG accordingly
+			if MCP_HDG ~= MCP_prev_HDG then
+				-- MCP change detected, update the B752
+				B752_HDG[0] = MCP_HDG
+				B752_prev_HDG = MCP_HDG
+				MCP_prev_HDG = MCP_HDG
+				play_sound(knob2)
+			else
+				-- no change, nothing to do
+			end
+		end
+		do_every_draw("HDG_mod_MCP()")
+
+		-- Second function. change by B752 to the MCP
+		function HDG_mod_B752()
+			--print("MCP: " .. MCP_HDG .. ", MCP_prev: " .. MCP_prev_HDG .. ", B752_HDG: " .. B752_HDG[0] .. ", B752_Prev: " .. B752_prev_HDG)
+			-- checks if the B752 hdg has changed and if so updates the MCP HDG accordingly
+			if B752_HDG[0] ~= B752_prev_HDG then
+				-- B752 change detected, update the MCP
+				MCP_HDG = B752_HDG[0]
+				B752_prev_HDG = B752_HDG[0]
+				MCP_prev_HDG = MCP_HDG
+				
+			else
+				-- no change, nothing to do
+			end
+		end
+		do_often("HDG_mod_B752()")
+	-- END HDG Selector	
+	
+	-- Start ALT Selector
+		DataRef("MCP_ALT","sim/cockpit/autopilot/altitude","writeable")
+		B752_ALT = dataref_table("757Avionics/ap/alt_act")
+		-- On start, make the MCP = B752 ALT selector
+		if MCP_ALT ~= B752_ALT[0] then
+			-- equalizing MCP to B752
+			MCP_ALT = B752_ALT[0]
+		else
+			-- nothing to do
+		end
+		
+		-- set the prev hdg var and values
+		MCP_prev_ALT = MCP_ALT
+		B752_prev_ALT = B752_ALT[0]
+
+		-- First function. change by MCP to the B752
+		function ALT_mod_MCP()
+			--print("MCP: " .. MCP_ALT .. ", MCP_prev: " .. MCP_prev_ALT .. ", B752_ALT: " .. B752_ALT[0] .. ", B752_Prev: " .. B752_prev_ALT)
+			-- checks if the MCP hdg has changed and if so updates the B752 ALT accordingly
+			if MCP_ALT ~= MCP_prev_ALT then
+				-- MCP change detected, update the panel
+				B752_ALT[0] = MCP_ALT
+				B752_prev_ALT = MCP_ALT
+				MCP_prev_ALT = MCP_ALT
+				play_sound(knob2)
+			else
+				-- no change, nothing to do
+			end
+		end
+		do_every_draw("ALT_mod_MCP()")
+
+		-- Second function. change by B752 to the MCP
+		function ALT_mod_B752()
+			--print("MCP: " .. MCP_ALT .. ", MCP_prev: " .. MCP_prev_ALT .. ", B752_ALT: " .. B752_ALT[0] .. ", B752_Prev: " .. B752_prev_ALT)
+			-- checks if the B752 hdg has changed and if so updates the MCP ALT accordingly
+			if B752_ALT[0] ~= B752_prev_ALT then
+				-- B752 change detected, update the MCP
+				MCP_ALT = B752_ALT[0]
+				B752_prev_ALT = B752_ALT[0]
+				MCP_prev_ALT = MCP_ALT
+				
+			else
+				-- no change, nothing to do
+			end
+		end
+		do_often("ALT_mod_B752()")
+	-- END ALT Selector	
+
+	-- Start VSI Selector
+		DataRef("MCP_VSI","sim/cockpit/autopilot/vertical_velocity","writeable")
+		--	DataRef("B752_VSI","757Avionics/ap/VSI_act","writeble")
+		B752_VSI = dataref_table("757Avionics/ap/vs_act")
+		-- On start, make the MCP = B752 VSI selector
+		if MCP_VSI ~= B752_VSI[0] then
+			-- equalizing MCP to B752
+			MCP_VSI = B752_VSI[0]
+		else
+			-- nothing to do
+		end
+		
+		-- set the prev VSI var and values
+		MCP_prev_VSI = MCP_VSI
+		B752_prev_VSI = B752_VSI[0]
+
+		-- First function. change by MCP to the B752
+		function VSI_mod_MCP()
+			--print("MCP: " .. MCP_VSI .. ", MCP_prev: " .. MCP_prev_VSI .. ", B752_VSI: " .. B752_VSI[0] .. ", B752_Prev: " .. B752_prev_VSI)
+			-- checks if the MCP VSI has changed and if so updates the B752 VSI accordingly
+			if MCP_VSI ~= MCP_prev_VSI then
+				-- MCP change detected, update the B752
+				B752_VSI[0] = MCP_VSI
+				B752_prev_VSI = MCP_VSI
+				MCP_prev_VSI = MCP_VSI
+				play_sound(knob2)
+			else
+				-- no change, nothing to do
+			end
+		end
+		do_every_draw("VSI_mod_MCP()")
+
+		-- Second function. change by B752 to the MCP
+		function VSI_mod_B752()
+			--print("MCP: " .. MCP_VSI .. ", MCP_prev: " .. MCP_prev_VSI .. ", B752_VSI: " .. B752_VSI[0] .. ", B752_Prev: " .. B752_prev_VSI)
+			-- checks if the B752 VSI has changed and if so updates the MCP VSI accordingly
+			if B752_VSI[0] ~= B752_prev_VSI then
+				-- B752 change detected, update the MCP
+				MCP_VSI = B752_VSI[0]
+				B752_prev_VSI = B752_VSI[0]
+				MCP_prev_VSI = MCP_VSI
+				
+			else
+				-- no change, nothing to do
+			end
+		end
+		do_often("VSI_mod_B752()")
+	-- END VSI Selector	
+
+	-- Start Capt Course Selector  												** uses same dataref - only need to play sound when changed
+		DataRef("MCP_N1_OBS","sim/cockpit/radios/nav1_obs_degm","writeable")
+		-- DataRef("B752_VSI","757Avionics/ap/VSI_act","writeble")
+		-- B752_VSI = dataref_table("757Avionics/ap/vs_act")
+		-- On start, make the MCP = B752 VSI selector
+		-- removed - always the same
+		
+		-- set the prev VSI var and values
+		MCP_prev_N1_OBS = MCP_N1_OBS
+		
+
+		-- First function. change by MCP to the B752
+		function N1_OBS_mod_MCP()
+			
+			-- checks if the MCP N1 OBS has changed and if so plays sound
+			if MCP_N1_OBS ~= MCP_prev_N1_OBS then
+				-- MCP change detected, play sound - nothing else
+				MCP_prev_N1_OBS = MCP_N1_OBS
+				play_sound(knob2)
+			else
+				-- no change, nothing to do
+			end
+		end
+		do_every_frame("N1_OBS_mod_MCP()")	
+	-- End Capt Course Selector
+	
+	-- Start IAS Selector
+		DataRef("MCP_IAS","sim/cockpit/autopilot/airspeed","writeable")
+		B752_IAS = dataref_table("757Avionics/ap/spd_act")
+		-- On start, make the MCP = B752 IAS selector
+		if MCP_IAS ~= B752_IAS[0] then
+			-- equalizing MCP to B752
+			MCP_IAS = B752_IAS[0]
+		else
+			-- nothing to do
+		end
+		
+		-- set the prev IAS var and values
+		MCP_prev_IAS = MCP_IAS
+		B752_prev_IAS = B752_IAS[0]
+
+		-- First function. change by MCP to the B752
+		function IAS_mod_MCP()
+			--print("MCP: " .. MCP_IAS .. ", MCP_prev: " .. MCP_prev_IAS .. ", B752_IAS: " .. B752_IAS[0] .. ", B752_Prev: " .. B752_prev_IAS)
+			-- checks if the MCP IAS has changed and if so updates the B752 IAS accordingly
+			if MCP_IAS ~= MCP_prev_IAS then
+				-- MCP change detected, update the B752
+				B752_IAS[0] = MCP_IAS
+				B752_prev_IAS = MCP_IAS
+				MCP_prev_IAS = MCP_IAS
+				play_sound(knob2)
+			else
+				-- no change, nothing to do
+			end
+		end
+		do_every_draw("IAS_mod_MCP()")
+
+		-- Second function. change by B752 to the MCP
+		function IAS_mod_B752()
+			--print("MCP: " .. MCP_IAS .. ", MCP_prev: " .. MCP_prev_IAS .. ", B752_IAS: " .. B752_IAS[0] .. ", B752_Prev: " .. B752_prev_IAS)
+			-- checks if the B752 IAS has changed and if so updates the MCP IAS accordingly
+			if B752_IAS[0] ~= B752_prev_IAS then
+				-- B752 change detected, update the MCP
+				MCP_IAS = B752_IAS[0]
+				B752_prev_IAS = B752_IAS[0]
+				MCP_prev_IAS = MCP_IAS
+				
+			else
+				-- no change, nothing to do
+			end
+		end
+		do_often("IAS_mod_B752()")
+	-- END IAS Selector	
+	
 
 -- Start FlapLeverPos
 -- Checks the state of the CFY Flap Lever and adjusts the B752 Flap Lever accordingly
@@ -544,24 +790,5 @@ do_often("AT_MCP_Buttons()")
 
 --set_button_assignment( (8*40) + 14, "sim/autopilot/autothrottle_toggle" )
 
-	set_button_assignment( (8*40) + 19, "sim/general/rot_up" )
-	set_button_assignment( (8*40) + 20, "sim/general/hat_switch_up_right" )
-	set_button_assignment( (8*40) + 21, "sim/general/rot_right" )
-	set_button_assignment( (8*40) + 22, "sim/general/hat_switch_down_right" )
-	set_button_assignment( (8*40) + 23, "sim/general/rot_down" )
-	set_button_assignment( (8*40) + 24, "sim/general/hat_switch_down_left" )
-	set_button_assignment( (8*40) + 25, "sim/general/rot_left" )
-	set_button_assignment( (8*40) + 26, "sim/general/hat_switch_up_left" )
-
-	-- setting nullzone, sensitivity and augment
-	set( "sim/joystick/joystick_pitch_nullzone",      0.000 )
-	set( "sim/joystick/joystick_roll_nullzone",       0.000 )
-	set( "sim/joystick/joystick_heading_nullzone",    0.000 )
-	set( "sim/joystick/joystick_pitch_sensitivity",   0.605 )
-	set( "sim/joystick/joystick_roll_sensitivity",    0.608 )
-	set( "sim/joystick/joystick_heading_sensitivity", 0.634 )
-	set( "sim/joystick/joystick_pitch_augment",       0.626 )
-	set( "sim/joystick/joystick_roll_augment",        0.620 )
-	set( "sim/joystick/joystick_heading_augment",     0.634 )
 
 end
