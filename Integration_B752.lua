@@ -3,6 +3,7 @@
 
 
 if (PLANE_ICAO =="B752") then
+
 --Field of view set for MD88
 	FieldOfView = dataref_table("sim/graphics/view/field_of_view_deg")
 	FieldOfView[0] = 75
@@ -70,12 +71,18 @@ if (PLANE_ICAO =="B752") then
 
 -- Start MCP integration
 	-- Start HDG Selector
-		DataRef("MCP_HDG","sim/cockpit/autopilot/heading_mag","writeable")
-		--	DataRef("B752_HDG","757Avionics/ap/hdg_act","writeble")
-		B752_HDG = dataref_table("757Avionics/ap/hdg_act")
+		DataRef("MCP_HDG","sim/cockpit/autopilot/heading_mag","writeable")			-- Dataref that the MCP works with
+		B752_HDG = dataref_table("757Avionics/ap/hdg_act")							-- Dataref that the B752 works with
+		DataRef("B752_AP_HDG", "757Avionics/mcp/hdg/label", "readonly")				-- Flag of the AP HDG display status (?), 1 = vis, 0 = not
+		DataRef("B752_THR_Lamp", "1-sim/AP/lamp/1","readonly")						-- THR Lamp status, 0 = off, 0.8 = on
+		DataRef("B752_LNAV_Lamp", "1-sim/AP/lamp/3","readonly")						-- LNAV Lamp status, 0 = off, 0.8 = on
+		DataRef("B752_SPD_Lamp", "1-sim/AP/lamp/2","readonly")						-- SPD Lamp status, 0 = off, 0.8 = on
+		DataRef("B752_HDG_Button","1-sim/AP/hdgConfButton","readonly")				-- HDG push button, 0 = , 1 = SEL
+		DataRef("B752_HDG_Hold","1-sim/AP/hdgHoldButton","readonly")				-- HDG hold button, 0 = off, 1 = on
+		
 		-- On start, make the MCP = B752 HDG selector
 		if MCP_HDG ~= B752_HDG[0] then
-			-- equalizing MCP to B752
+			-- equalizing MCP to B752. Runs only once, on startup
 			MCP_HDG = B752_HDG[0]
 		else
 			-- nothing to do
@@ -102,7 +109,7 @@ if (PLANE_ICAO =="B752") then
 		-- end
 		-- do_every_draw("HDG_mod_MCP()")
 
-		-- First function. HDG change by MCP to the B752
+		-- First function. HDG change by MCP to the B752 - ORIGINAL
 		-- function HDG_mod_MCP()
 			-- --print("MCP: " .. MCP_HDG .. ", MCP_prev: " .. MCP_prev_HDG .. ", B752_HDG: " .. B752_HDG[0] .. ", B752_Prev: " .. B752_prev_HDG)
 -- --			-- checks if the MCP HDG has changed and if so updates the B752 HDG accordingly
@@ -122,6 +129,91 @@ if (PLANE_ICAO =="B752") then
 			-- end
 		-- end
 		-- do_every_frame("HDG_mod_MCP()")
+		
+		-- First function. HDG change by MCP to the B752
+		function HDG_mod_MCP()
+			--print("MCP: " .. MCP_HDG .. ", MCP_prev: " .. MCP_prev_HDG .. ", B752_HDG: " .. B752_HDG[0] .. ", B752_Prev: " .. B752_prev_HDG)
+			--print("MCP: " .. MCP_HDG .. ", MCP_prev: " .. MCP_prev_HDG .. ", B752_HDG: " .. B752_HDG[0] .. ", B752_Prev: " .. B752_prev_HDG .. ", B752_AP_ALT: " .. B752_AP_ALT .. ", B752_LNAV_Lamp: " .. B752_LNAV_Lamp)
+			--			-- checks if the MCP HDG has changed and if so updates the B752 HDG accordingly - ONLY IF LNAV IS NOT ON
+			if MCP_HDG ~= MCP_prev_HDG then
+				-- check if LNAV is on. if yes, then we just update the last value and do nothing
+				if 	B752_AP_HDG == 1 and B752_LNAV_Lamp == 0 then		-- 1 = A/P LNAV not in charge
+					-- MCP change detected and A/P not in charge. going down, up?, update the B752
+					-- setting for HDG SEL on
+					if B752_HDG_Button == 1 and B752_HDG_Hold == 0 then 						-- HDG SEL is on
+						if MCP_HDG < MCP_prev_HDG then
+							--command_once("1-sim/comm/AP/hdgDN")
+							B752_HDG[0] = MCP_HDG
+							MCP_prev_HDG = MCP_HDG
+							B752_prev_HDG = MCP_HDG
+							play_sound(knob2)
+							--print("HDG dn due to MCP, HDG SEL")
+						elseif MCP_HDG > MCP_prev_HDG then
+							--command_once("1-sim/comm/AP/hdgUP")
+							B752_HDG[0] = MCP_HDG
+							MCP_prev_HDG = MCP_HDG
+							B752_prev_HDG = MCP_HDG
+							play_sound(knob2)
+							print("HDG up due to MCP, HDG SEL")
+						end
+					elseif B752_HDG_Button == 0 and B752_HDG_Hold == 1 then						-- HDG ATT
+							if MCP_HDG < MCP_prev_HDG then
+								--command_once("1-sim/comm/AP/hdgDN")
+								B752_HDG[0] = MCP_HDG
+								MCP_prev_HDG = MCP_HDG
+								B752_prev_HDG = MCP_HDG
+								--play_sound(knob2)
+								--print("HDG dn due to MCP, HDG ATT")
+							
+							elseif MCP_HDG > MCP_prev_HDG then
+								B752_HDG[0] = MCP_HDG
+								MCP_prev_HDG = MCP_HDG
+								B752_prev_HDG = MCP_HDG
+								--play_sound(knob2)
+								--print("HDG up due to MCP, HDG ATT")
+							end
+					elseif B752_HDG_Button == 0 and B752_HDG_Hold == 0 then						-- HDG HOLD
+							if MCP_HDG < MCP_prev_HDG then
+								--command_once("1-sim/comm/AP/hdgDN")
+								--MCP_prev_HDG = B752_HDG[0]
+								--B752_HDG[0] = MCP_HDG
+								--B752_prev_HDG = MCP_HDG
+								--MCP_HDG = MCP_HDG + 1
+								--print("B752 HDG dn due to MCP, MCP unchanged due to HDG HOLD")
+								--print("B752 HDG: " .. B752_HDG[0] .. ", MCP_HDG: " .. MCP_HDG .. ", MCP_prev_HDG: " .. MCP_prev_HDG .. ", B752_prev_HDG: " .. B752_prev_HDG)
+								B752_HDG[0] = MCP_HDG
+								MCP_prev_HDG = MCP_HDG
+								B752_prev_HDG = MCP_HDG
+								--print("HDG dn due to MCP, HDG HOLD")
+								play_sound(knob2)
+							elseif MCP_HDG > MCP_prev_HDG then
+								B752_HDG[0] = MCP_HDG
+								MCP_prev_HDG = MCP_HDG
+								B752_prev_HDG = MCP_HDG
+								--print("HDG up due to MCP, HDG HOLD")
+								play_sound(knob2)
+							end
+					
+					
+					end
+				else
+					-- A/P is in charge, so just equate prev val with curr val
+					MCP_prev_HDG = MCP_HDG
+					B752_HDG[0] = MCP_HDG
+					B752_prev_HDG = MCP_HDG
+					play_sound(knob2)
+				end
+				--MCP_prev_HDG = MCP_HDG
+				--B752_prev_HDG = MCP_HDG
+				--play_sound(knob2)
+				--print("click by HDG" .. "MCP_HDG: " .. MCP_HDG .. ", B752_HDG: " .. B752_HDG[0] .. ", MCP_prev_HDG: " .. MCP_prev_HDG .. ", B752_prev_HDG: " .. B752_prev_HDG )
+			
+			else
+--				-- no change, nothing to do
+			end
+		end
+		do_every_draw("HDG_mod_MCP()")
+		
 		
 		
 		
@@ -143,10 +235,10 @@ if (PLANE_ICAO =="B752") then
 	-- END HDG Selector	
 	
 	-- Start ALT Selector
-		DataRef("MCP_ALT","sim/cockpit/autopilot/altitude","writeable")
-		DataRef("B752_AP_ALT", "757Avionics/mcp/alt/label", "readonly")
-		DataRef("B752_VNAV_Lamp", "1-sim/AP/lamp/4","readonly")
-		B752_ALT = dataref_table("757Avionics/ap/alt_act")
+		DataRef("MCP_ALT","sim/cockpit/autopilot/altitude","writeable")				-- DataRef that the MCP works with
+		DataRef("B752_AP_ALT", "757Avionics/mcp/alt/label", "readonly")				-- Flag of the AP ALT display status (?), 1 = vis, 0 = not
+		DataRef("B752_VNAV_Lamp", "1-sim/AP/lamp/4","readonly")						-- VNAV Lamp status, 0 = off, 0.8 = on
+		B752_ALT = dataref_table("757Avionics/ap/alt_act")							-- DataRef of the ALT window display
 
 		-- On start, make the MCP = B752 ALT selector
 		if MCP_ALT ~= B752_ALT[0] then
@@ -173,14 +265,15 @@ if (PLANE_ICAO =="B752") then
 					if MCP_ALT < MCP_prev_ALT then
 						command_once("1-sim/comm/AP/altDN")
 						play_sound(knob2)
-						print("click by ALT - dn" .. ", MCP_ALT: " .. MCP_ALT .. ", B752_ALT: " .. B752_ALT[0] .. ", MCP_prev_ALT: " .. MCP_prev_ALT .. ", B752_prev_ALT: " .. B752_prev_ALT )
+						--print("click by ALT - dn" .. ", MCP_ALT: " .. MCP_ALT .. ", B752_ALT: " .. B752_ALT[0] .. ", MCP_prev_ALT: " .. MCP_prev_ALT .. ", B752_prev_ALT: " .. B752_prev_ALT )
 					elseif MCP_ALT > MCP_prev_ALT then
 						command_once("1-sim/comm/AP/altUP")
 						play_sound(knob2)
-						print("click by ALT - up" .. ", MCP_ALT: " .. MCP_ALT .. ", B752_ALT: " .. B752_ALT[0] .. ", MCP_prev_ALT: " .. MCP_prev_ALT .. ", B752_prev_ALT: " .. B752_prev_ALT )
+						--print("click by ALT - up" .. ", MCP_ALT: " .. MCP_ALT .. ", B752_ALT: " .. B752_ALT[0] .. ", MCP_prev_ALT: " .. MCP_prev_ALT .. ", B752_prev_ALT: " .. B752_prev_ALT )
 					end
 				else
 					-- A/P is in charge - do not touch the B752 MCP
+					
 					
 				end
 				
@@ -200,7 +293,7 @@ if (PLANE_ICAO =="B752") then
 		function ALT_mod_B752()
 			--print("MCP: " .. MCP_ALT .. ", MCP_prev: " .. MCP_prev_ALT .. ", B752_ALT: " .. B752_ALT[0] .. ", B752_Prev: " .. B752_prev_ALT)
 			-- checks if the B752 ALT has changed and if so updates the MCP ALT accordingly
-			if B752_ALT[0] ~= B752_prev_ALT then
+			if B752_ALT[0] ~= B752_prev_ALT and B752_VNAV_Lamp ==0 then
 				-- B752 change detected, update the MCP			
 				MCP_ALT = B752_ALT[0]
 				B752_prev_ALT = B752_ALT[0]
@@ -263,11 +356,11 @@ if (PLANE_ICAO =="B752") then
 					if MCP_VSI < MCP_prev_VSI then
 						command_once("1-sim/comm/AP/vviDN")
 						play_sound(knob2)
-						print("click by VSI" .. "MCP_VSI: " .. MCP_VSI .. ", B752_VSI: " .. B752_VSI[0] .. ", MCP_prev_VSI: " .. MCP_prev_VSI .. ", B752_prev_VSI: " .. B752_prev_VSI )
+						--print("click by VSI" .. "MCP_VSI: " .. MCP_VSI .. ", B752_VSI: " .. B752_VSI[0] .. ", MCP_prev_VSI: " .. MCP_prev_VSI .. ", B752_prev_VSI: " .. B752_prev_VSI )
 					elseif MCP_VSI > MCP_prev_VSI then
 						command_once("1-sim/comm/AP/vviUP")
 						play_sound(knob2)
-						print("click by VSI" .. "MCP_VSI: " .. MCP_VSI .. ", B752_VSI: " .. B752_VSI[0] .. ", MCP_prev_VSI: " .. MCP_prev_VSI .. ", B752_prev_VSI: " .. B752_prev_VSI )
+						--print("click by VSI" .. "MCP_VSI: " .. MCP_VSI .. ", B752_VSI: " .. B752_VSI[0] .. ", MCP_prev_VSI: " .. MCP_prev_VSI .. ", B752_prev_VSI: " .. B752_prev_VSI )
 					end
 				else
 					-- A/P is in charge - do not touch the B752 MCP
@@ -322,7 +415,7 @@ if (PLANE_ICAO =="B752") then
 				-- MCP change detected, play sound - nothing else
 				MCP_prev_N1_OBS = MCP_N1_OBS
 				play_sound(knob2)
-				print("click by OBS")
+				--print("click by OBS")
 			else
 				-- no change, nothing to do
 			end
@@ -333,6 +426,7 @@ if (PLANE_ICAO =="B752") then
 	-- Start IAS Selector
 		DataRef("MCP_IAS","sim/cockpit/autopilot/airspeed","writeable")
 		B752_IAS = dataref_table("757Avionics/ap/spd_act")
+		
 		-- On start, make the MCP = B752 IAS selector
 		if MCP_IAS ~= B752_IAS[0] then
 			-- equalizing MCP to B752
@@ -345,6 +439,46 @@ if (PLANE_ICAO =="B752") then
 		MCP_prev_IAS = MCP_IAS
 		B752_prev_IAS = B752_IAS[0]
 
+		-- First function. change by MCP to the B752
+		function IAS_mod_MCP()
+			--print("MCP: " .. MCP_IAS .. ", MCP_prev: " .. MCP_prev_IAS .. ", B752_IAS: " .. B752_IAS[0] .. ", B752_Prev: " .. B752_prev_IAS)
+			-- checks if the MCP IAS has changed and if so updates the B752 IAS accordingly
+			if B752_AT_arm_sw == 0 and B752_SPD_Lamp > 0 then				-- A/T is on and on SPD mode
+				if MCP_IAS ~= MCP_prev_IAS then
+					-- MCP change detected, update the B752
+					B752_IAS[0] = MCP_IAS
+					B752_prev_IAS = MCP_IAS
+					MCP_prev_IAS = MCP_IAS
+					play_sound(knob2)
+					--print("click by MCP IAS - SPD is on")
+				else
+					-- no change, nothing to do
+				end
+			elseif B752_AT_arm_sw == 0 and B752_FLCH_Lamp > 0 then			-- A/T is on and in FLCH mode
+				if MCP_IAS ~= B752_IAS[0] then
+					-- MCP change detected, update the B752
+					B752_IAS[0] = MCP_IAS
+					--B752_prev_IAS = MCP_IAS
+					MCP_prev_IAS = MCP_IAS
+					play_sound(knob2)
+					--print("click by MCP IAS - FLCH is on. MCP_IAS: " .. MCP_IAS .. ", B752_IAS: " .. B752_IAS[0])
+				else
+					-- no change, nothing to do
+				end
+			
+			else															-- A/T is off
+				if MCP_IAS ~= MCP_prev_IAS then
+					B752_IAS[0] = MCP_IAS
+					MCP_prev_IAS = MCP_IAS
+					play_sound(knob2)
+					--print("click by MCP IAS - A/T is off. MCP_IAS: " .. MCP_IAS .. ", B752_IAS: " .. B752_IAS[0])
+				end
+			
+			end
+		end
+		do_every_draw("IAS_mod_MCP()")
+
+		-- Works for SPD mode
 		-- -- First function. change by MCP to the B752
 		-- function IAS_mod_MCP()
 			-- --print("MCP: " .. MCP_IAS .. ", MCP_prev: " .. MCP_prev_IAS .. ", B752_IAS: " .. B752_IAS[0] .. ", B752_Prev: " .. B752_prev_IAS)
@@ -360,8 +494,9 @@ if (PLANE_ICAO =="B752") then
 				-- -- no change, nothing to do
 			-- end
 		-- end
-		-- do_every_draw("IAS_mod_MCP()")
+		-- do_every_draw("IAS_mod_MCP()")		
 
+		
 		-- -- Second function. change by B752 to the MCP
 		-- function IAS_mod_B752()
 			-- --print("MCP: " .. MCP_IAS .. ", MCP_prev: " .. MCP_prev_IAS .. ", B752_IAS: " .. B752_IAS[0] .. ", B752_Prev: " .. B752_prev_IAS)
@@ -525,11 +660,29 @@ if (PLANE_ICAO =="B752") then
 				-- ]],
 				-- "",
 				-- "")
+
+-- DISABLED ON 10/29/2018
+		-- create_command("linus/B752/AutoThrottle_Disengage","B752 AutoThrottle Disengage",
+			-- -- OFF = 1
+			-- -- ON = 0
+			-- [[
+				-- -- set AutoThrottle = OFF
+				-- B752_AT_arm_sw = 1								-- B752 AT Switch goes off
+				-- XP_AT_Enabled[0] = 0
+				-- Override_Throttle[0] = 0
+			-- ]],
+			-- "",
+			-- "")
+
+-- START New AT Disengage switch			
+-- We are leaving the offset alone. now we need to detect the button press by monitoring the states of XP_AT_Enabled and Override_Throttle.
+-- If they disagree, the button was pressed.
+	-- First, the command
 		create_command("linus/B752/AutoThrottle_Disengage","B752 AutoThrottle Disengage",
 			-- OFF = 1
 			-- ON = 0
 			[[
-				-- set AutoThrottle = OFF
+				-- -- set AutoThrottle = OFF
 				B752_AT_arm_sw = 1								-- B752 AT Switch goes off
 				XP_AT_Enabled[0] = 0
 				Override_Throttle[0] = 0
@@ -537,36 +690,59 @@ if (PLANE_ICAO =="B752") then
 			"",
 			"")
 
--- START AT Disengage switch
--- Checks the state of the CFY AT Disengage and adjusts the B757-200 A/T State accordingly
-	dataref("AT_Disen_752","linus/CFY/ATDisen","writeable",0)
-	
-	function updateB752ATDisen()
---		print("ATDisen: " .. ATDisen .. ", B752_AT_Switch: " .. AT_Disen_752 )
-		if AT_Disen_752 == 0 then							-- CFY AT Disen button was pressed
-	--		AT_arm_sw = 0
-	--		XP_AT_Enabled[0] = 0
-	--		AT_Value[0] = -1
-	--		AT_arm_sw = 0
-	--		XP_AT_Enabled[0] = 0
-	--		command_once("linus/B752/ToggleAutoThrottle")
-			command_once("linus/B752/AutoThrottle_Disengage")		-- execs command to turn off B752 MCP switch, Xplane A/T and Linus DataRef (Why?)
-			AT_Disen_752 = 1
+	-- Second, the monitor function
+	function NewB752ATDisen()
+		-- monitors the disagreement between XP_AT_Enabled and Override_Throttle. when disagree, then fire AT Disengage command
+		if TOGA_latch ~= 1 then
+			if XP_AT_Enabled[0] == 0 and XP_AT_Enabled[0] ~= Override_Throttle[0] then
+				-- disagreement detected, we now fire AT Disengage command
+				print("AT Disengage Fired! XP_AT_Enabled=" .. XP_AT_Enabled[0] .. ", Override_Throttle=" .. Override_Throttle[0])
+				command_once("linus/B752/AutoThrottle_Disengage")		-- execs command to turn off B752 MCP switch
+			else
+				-- they agree, nothing to do
+			end
+		else
+			-- Disagreement ok because of TOGA
+			print("Override ATDisen due to TOGA")
 		end
 	end
-	do_often("updateB752ATDisen()")
+	do_often("NewB752ATDisen()")
+
+-- END New AT Disengage switch
+			
+-- START AT Disengage switch
+-- Checks the state of the CFY AT Disengage and adjusts the B757-200 A/T State accordingly
+	dataref("AT_Disen_752","linus/CFY/ATDisen","writeable")
+	
+	-- function updateB752ATDisen()
+-- --		print("ATDisen: " .. ATDisen .. ", B752_AT_Switch: " .. AT_Disen_752 )
+		-- if AT_Disen_752 == 0 then							-- CFY AT Disen button was pressed
+	-- --		AT_arm_sw = 0
+	-- --		XP_AT_Enabled[0] = 0
+	-- --		AT_Value[0] = -1
+	-- --		AT_arm_sw = 0
+	-- --		XP_AT_Enabled[0] = 0
+	-- --		command_once("linus/B752/ToggleAutoThrottle")
+			-- command_once("linus/B752/AutoThrottle_Disengage")		-- execs command to turn off B752 MCP switch, Xplane A/T and Linus DataRef (Why?)
+			-- AT_Disen_752 = 1
+		-- end
+	-- end
+	-- do_often("updateB752ATDisen()")
 -- End AT_Disengage
+
+
+
 
 -- START FLCH logic 
 -- if FLCH is pressed / engaged and the A/T is on then sim/cockpit2/autopilot/autothrottle_enabled should be on 
 	AT_FLCH = dataref_table("1-sim/AP/flchButton")
-	DataRef("AT_FLCH_Lamp","1-sim/AP/lamp/5","readonly")
+	DataRef("B752_FLCH_Lamp","1-sim/AP/lamp/5","readonly")
 	DataRef("XP_Cabin_Altitude","757Avionics/adc/alt_cpt","readonly")
 	DataRef("XP_Throttle_state","sim/cockpit2/engine/actuators/throttle_beta_rev_ratio_all","readonly")
 	XP_Throttle_req = dataref_table("sim/multiplayer/controls/engine_throttle_request")
 	function B752_AT_on_FLCH()
 --		-- checks if FLCH is pressed and A/T is on then sim/cockpit2/autopilot/autothrottle_enabled should be on
-		if AT_FLCH_Lamp > 0 then
+		if B752_FLCH_Lamp > 0 then
 			-- button is pressed and lamp is on - FLCH is active (?)
 			if XP_Cabin_Altitude < B752_ALT[0] then
 				-- we want to Climb
@@ -579,11 +755,17 @@ if (PLANE_ICAO =="B752") then
 			elseif XP_Cabin_Altitude > B752_ALT[0] then
 				-- we want to descend
 				-- AutoThrottle disable AFTER idle!
+				
 				if XP_Throttle_state > 0.024696 then
 					XP_AT_Enabled[0] = 1
+					Override_Throttle[0] = 1
 					XP_Throttle_req[0] = 0.024696
-				else
-					XP_AT_Enabled[0] = 0
+					--print("FLCH Descend mode")
+				else					
+					--print("FLCH Descend IDLE reached")
+					--XP_AT_Enabled[0] = 0	--Commented out - to avoid tripping the AT Disen 
+					Override_Throttle[0] = 0
+					
 				end
 				
 			end
@@ -593,7 +775,166 @@ if (PLANE_ICAO =="B752") then
 	--print("XP_Cabin_Altitude: " .. XP_Cabin_Altitude .. ", XP_AT_Enabled: " .. XP_AT_Enabled[0] .. ", B752_ALT[0]: " .. B752_ALT[0] .. ", XP_Throttle_state: " .. XP_Throttle_state)
 	end
 	do_every_frame("B752_AT_on_FLCH()")
+-- END FLCH
 
+-- START SPD logic 
+-- if SPD is pressed / engaged and the A/T is on then sim/cockpit2/autopilot/autothrottle_enabled should be on 
+	B752_SPD_prev = B752_SPD_Lamp
+	
+	function B752_AT_on_SPD()
+--		-- checks if SPD is pressed and A/T is on then sim/cockpit2/autopilot/autothrottle_enabled should be on
+		if B752_SPD_Lamp ~= B752_SPD_prev then
+			if B752_SPD_Lamp > 0 then
+				-- button is pressed and lamp is on - SPD is active 
+				-- AutoThrottle enable (1) and override on (1)
+				XP_AT_Enabled[0] = 1
+				Override_Throttle[0] = 1
+				AT_EPR[0] = 0
+				--print("SPD mode is now active!")
+			
+			else
+				--print("SPD mode not active!")
+			end
+			B752_SPD_prev = B752_SPD_Lamp
+		end
+	end
+	do_often("B752_AT_on_SPD()")
+-- END SPD logic
+
+DataRef("XP_OnGround","sim/flightmodel/failures/onground_any","readonly")		-- To know if on ground. 1 = yes, 0 = no
+--DataRef("B752_EPR_Limit","1-sim/fms/thrust_limit_value","readonly")				-- B752 EPR Limit, set by FMC	
+--B752_E1_EPR = dataref_table("sim/cockpit2/engine/indicators/EPR_ratio")
+DataRef("B752_EPR_Limit","1-sim/eicas/EPR_target/L","readonly")					-- B752 Eng1 EPR Limit, set by FMC, converted	
+B752_E1_EPR = dataref_table("1-sim/eicas/EPR_deltaL/L","readonly")				-- B752 Eng1 EPR developed, converted
+--B752_E1_EPR = dataref_table("1-sim/eicas/EPR_deltaU/L","readonly")					-- B752 Eng1 EPR Requested, converted
+
+-- START THR logic 
+-- if THR is pressed / engaged and the A/T is on AND we are on the ground then sim/cockpit2/autopilot/autothrottle_enabled should be on 
+--	B752_THR_prev = B752_THR_Lamp
+
+TOGA_latch = 0				
+
+	function B752_AT_on_THR()
+--		-- checks if THR is pressed and A/T is on AND we are on the Ground then sim/cockpit2/autopilot/autothrottle_enabled should be on
+		-- until reaching TO EPR set value
+		-- then sim/cockpit2/autopilot/autothrottle_enabled should be off to allow manual adj of the A/T
+		
+--		if B752_THR_Lamp ~= B752_THR_prev then
+			if XP_OnGround == 1 then
+				-- we are on the ground
+				
+				if B752_THR_Lamp > 0 then
+					if TOGA_latch == 1 then
+						-- button is pressed and lamp is on - THR is active 
+						-- TOGA latch is on
+						-- if we have not reached tgt EPR then 
+						-- AutoThrottle enable (1) and override on (1)
+						
+						if B752_E1_EPR[0] <= B752_EPR_Limit * 0.88  then		-- not there yet
+							TOGA_latch = 1
+							--XP_AT_Enabled[0] = 1
+							--Override_Throttle[0] = 1
+							XP_Throttle_req[0] = 1.1						--Increase Throttle fwd till we reach tgt EPR
+							print("Not yet at 88% EPR - increasing Throttle. E1_EPR: " .. B752_E1_EPR[0] / B752_EPR_Limit .. "%, " .. B752_E1_EPR[0] .. ", EPR_Lim: " .. B752_EPR_Limit)
+						
+						--elseif B752_E1_EPR[0] <= B752_EPR_Limit * 0.95 then --or TOGA_latch == 0 then
+						--	TOGA_latch = 1
+						--	XP_AT_Enabled[0] = 1
+						--	Override_Throttle[0] = 0
+						--	XP_Throttle_req[0] = 1.1						--Increase Throttle fwd till we reach tgt EPR
+							
+						--	print("reaching 95% limit EPR - increasing Throttle")
+						--	print("THR/EPR mode is now active! - TO mode" .. B752_E1_EPR[0] .. ", " .. B752_EPR_Limit)
+						else
+							-- We reached EPR target - back to manual control
+							-- consider a timer here?
+							XP_Throttle_req[0] = 1.1
+							XP_AT_Enabled[0] = 0								--Frees the Throttle Handles
+							--Override_Throttle[0] = 0							--Prevents Throttle from coming down
+							TOGA_latch = 0
+							print("THR/EPR mode is now inactive! - TO mode - EPR reached")
+						end
+					else
+						-- TOGA latch is off, so we are not doing TOGA anymore
+						-- nothing to do
+					end
+				else
+					--print("THR mode not active!")
+				end
+			else
+				-- aircraft is not on ground
+				if B752_THR_Lamp > 0 then
+					XP_AT_Enabled[0] = 0
+					Override_Throttle[0] = 0
+					TOGA_latch = 0
+					--print("THR mode - air - is now active!")
+				else
+					-- in the air, THR lamp is off
+				end
+			end
+			--B752_THR_prev = B752_THR_Lamp
+			
+--		end
+	end
+	do_every_frame("B752_AT_on_THR()")
+-- END THR logic
+
+-- Start TOGA logic
+	--When TOGA button is pressed, goes to 1. If F/D on and AT is on then we should do TOGA (press EPR/THR)
+	DataRef("B752_TOGA","linus/CFY/TOGASen","writeable")		-- 0 = OFF, 1 = ON
+	DataRef("B752_FD_sw1","1-sim/AP/fd1Switcher","readonly")	-- 1 = OFF, 0 = ON
+	DataRef("B752_FD_sw2","1-sim/AP/fd2Switcher","readonly")	-- 1 = OFF, 0 = ON
+	function B752_TOGA_button()
+		-- senses the TOGA button press then executes TOGA if: on the ground and FD on and AT on
+		
+		if B752_TOGA == 1 then
+			-- Button is pressed
+			print("TOGA pressed")
+			if XP_OnGround == 1 then
+				-- Aircraft on Ground
+				print("Aircraft on Ground")
+				if B752_FD_sw1 == 0 or B752_FD_sw2 == 0 then
+					-- FD is on
+					print("FD is on")
+					if B752_AT_arm_sw == 0 then
+						-- AT is on
+						-- We engage TOGA
+						print("AT is on. We Engage TOGA")
+						TOGA_latch = 1
+						XP_AT_Enabled[0] = 1
+						Override_Throttle[0] = 1						-- Otherwise will limit Throttle to 1.3 EPR
+						XP_Throttle_req[0] = 1.1	
+						AT_EPR[0] = 1	
+						--Override_Throttle[0] = 0						-- Otherwise will limit Throttle to 1.3 EPR
+						--XP_Throttle_req[0] = 1.1						--Increase Throttle fwd till we reach tgt EPR
+						--print("increasing Throttle")
+						B752_TOGA = 0		-- Reset TOGA	
+					else
+						-- AT is not on
+						print("AT is not on")
+						B752_TOGA = 0
+						TOGA_latch = 0
+					end
+				else
+					-- FD is not on
+					print("FD is not on")
+					B752_TOGA = 0
+					TOGA_latch = 0
+				end
+			else
+				-- Aircraft in the Air -- further development needed here
+				print("Aircraft in the Air")
+				B752_TOGA = 0
+				TOGA_latch = 0
+			end
+		else
+			-- TOGA button is not pressed
+		end
+	end
+	
+	do_often("B752_TOGA_button()")
+	
+-- END TOGA logic
 
 -- code for B752 AutoThrottle switch
 -- first define the switch
@@ -687,8 +1028,14 @@ if (PLANE_ICAO =="B752") then
 			else 	
 				-- set AutoThrottle = ON				-- MCP AT switch is OFF - we then turn it ON (1 to 0)
 				B752_AT_arm_sw = 0
-				Override_Throttle[0] = 1
-				XP_AT_Enabled[0] = 1
+				
+				--if no AT modes are armed, then we don't enable the XP_AT_Enabled
+				if B752_VNAV_Lamp > 0 or B752_FLCH_Lamp > 0 or B752_SPD_Lamp > 0 then --not THR
+					XP_AT_Enabled[0] = 1
+					Override_Throttle[0] = 1
+				else
+					-- no A/T modes are on so we do not let the ap control the throttle
+				end
 				-- consider the override here
 				-- override yes if AT modes are on
 				
@@ -723,8 +1070,66 @@ if (PLANE_ICAO =="B752") then
 -- End Override Throttle off
 
 
+--COMMENTED OUT 10/2/2018
+	-- B752 A/T FLCH switch and CFY
+	--IF A/T is on then 
+		--If FLCH is turned on, we want AT to remain on (AND CFY to continue working)
+	--ELSE
+	--	We want FLCH to turn off 
+	--dataref("AT_FLCH","1-sim/AP/flchButton","readonly")
+--	AT_FLCH = dataref_table("1-sim/AP/flchButton")
+--	function CheckFLCH()
+--		if AT_arm_sw == 0 then
+--			if	AT_FLCH[0] == 1 then
+--				XP_AT_Enabled[0] = 1
+--			end
+--		else
+--			AT_FLCH[0] = 0
+--		end
+--	end
+--	do_often ("CheckFLCH()")
+	-- end FLCH
+
+	-- B752 A/T VNAV switch and CFY
+	-- If VNAV is turned on, we want AT to remain on (AND CFY to continue working)
+	--dataref("AT_VNAV","1-sim/AP/vnavButton","readonly")
+--	AT_VNAV = dataref_table("1-sim/AP/vnavButton")
+--	function CheckVNAV()
+--		if AT_arm_sw == 0 then
+--			if	AT_VNAV[0] == 1 then
+--				XP_AT_Enabled[0] = 1
+--			end
+--		--added 10/2/2018
+--		else	
+--			AT_VNAV[0] = 0
+--		end
+--	end
+--	do_often ("CheckVNAV()")
+	-- end VNAV check
+
+	-- B752 A/T SPD switch and CFY
+	-- If SPD is turned on, we want AT to remain on (AND CFY to continue working)
+	--dataref("AT_VNAV","1-sim/AP/vnavButton","readonly")
+--	function CheckSPD()
+--		if AT_arm_sw == 0 then
+--			if	AT_SPD[0] == 1 then
+--				XP_AT_Enabled[0] = 1
+--			end
+--		else	
+--			AT_SPD[0] = 0
+--		end
+--	end
+--	do_often ("CheckSPD()")
+	-- end SPD check
+
+--COMMENTED OUT 10/2/2018
+
+--set_button_assignment( (8*40) + 14, "sim/autopilot/autothrottle_toggle" )
 
 
+
+
+-- END OF THROTTLE STUFF HERE
 
 
 
@@ -780,7 +1185,8 @@ if (PLANE_ICAO =="B752") then
 	set_button_assignment( (8*40) + 4, "linus/B752/AP_Disengage_button" )
 --	set_button_assignment( (8*40) + 4, "1-sim/AP/comm/ap_disc" )
 
--- END OF THROTTLE STUFF HERE
+
+
 
 -- Start Speed Brake lever
 -- Checks the state of the CFY Speed Brake Lever and adjusts the B752 Speed Brake Lever accordingly
@@ -936,61 +1342,108 @@ if (PLANE_ICAO =="B752") then
 	set_button_assignment( (0*40) + 2, "linus/B752/BarometerSync" )
 -- end B752 Sync Altimeter Barometer Setting code
 
---COMMENTED OUT 10/2/2018
-	-- B752 A/T FLCH switch and CFY
-	--IF A/T is on then 
-		--If FLCH is turned on, we want AT to remain on (AND CFY to continue working)
-	--ELSE
-	--	We want FLCH to turn off 
-	--dataref("AT_FLCH","1-sim/AP/flchButton","readonly")
---	AT_FLCH = dataref_table("1-sim/AP/flchButton")
---	function CheckFLCH()
---		if AT_arm_sw == 0 then
---			if	AT_FLCH[0] == 1 then
---				XP_AT_Enabled[0] = 1
---			end
---		else
---			AT_FLCH[0] = 0
---		end
---	end
---	do_often ("CheckFLCH()")
-	-- end FLCH
 
-	-- B752 A/T VNAV switch and CFY
-	-- If VNAV is turned on, we want AT to remain on (AND CFY to continue working)
-	--dataref("AT_VNAV","1-sim/AP/vnavButton","readonly")
---	AT_VNAV = dataref_table("1-sim/AP/vnavButton")
---	function CheckVNAV()
---		if AT_arm_sw == 0 then
---			if	AT_VNAV[0] == 1 then
---				XP_AT_Enabled[0] = 1
---			end
---		--added 10/2/2018
---		else	
---			AT_VNAV[0] = 0
---		end
---	end
---	do_often ("CheckVNAV()")
-	-- end VNAV check
 
-	-- B752 A/T SPD switch and CFY
-	-- If SPD is turned on, we want AT to remain on (AND CFY to continue working)
-	--dataref("AT_VNAV","1-sim/AP/vnavButton","readonly")
---	function CheckSPD()
---		if AT_arm_sw == 0 then
---			if	AT_SPD[0] == 1 then
---				XP_AT_Enabled[0] = 1
---			end
---		else	
---			AT_SPD[0] = 0
---		end
---	end
---	do_often ("CheckSPD()")
-	-- end SPD check
+--BEGIN EFIS Integration
+--EFIS has: Radio Altimeter, Baro/Radio selector, Baro altimeter setting, IN/HPA selector, Map mode, map range, VOR1/ADF1 switch, VOR2/ADF2 switch
+--WXR, STA, WPT, ARPT, DATA, POS, TERR, FPV, METERS
 
---COMMENTED OUT 10/2/2018
+-- EFIS Radio Altimeter
+DataRef("EFIS_RALT","sim/cockpit/misc/radio_altimeter_minimum","readonly")
+--DataRef("B752_RALT","1-sim/inst/HD/L","writeable")
+DataRef("B752_RALT","1-sim/ndpanel/1/dhRotary","writeable")
+EFIS_RALT_prev = EFIS_RALT
 
---set_button_assignment( (8*40) + 14, "sim/autopilot/autothrottle_toggle" )
+function CheckRALT()
+	--if EFIST RALT changes then changes B757 RALT accordingly
+	if EFIS_RALT ~= EFIS_RALT_prev then
+		if EFIS_RALT == 0 then									--The RALT has been reset - so we reset as well
+			B752_RALT = 0
+			EFIS_RALT_prev = 0
+		else													--Not a RALT reset so we continue
+			B752_RALT = EFIS_RALT/1000
+			EFIS_RALT_prev = EFIS_RALT
+			
+		end
+	else
+		-- no change - nothing to do
+	end 
+end
+do_often("CheckRALT()")
 
+-- EFIS Map Range knob
+DataRef("B752_HSI_rng" ,"1-sim/ndpanel/1/hsiRangeRotary","writeable")		-- B752 HSI rng has 7 positions. 
+DataRef("EFIS_HSI_rng","sim/cockpit2/EFIS/map_range","writeable")			-- EFIS rng has 8 positions
+
+-- On start, make the B752 map range = EFIS map range
+-- print("Start values: EFIS_HSI: " .. EFIS_HSI_rng .. ", B752_HSI: " .. B752_HSI_rng)
+-- B752_HSI_rng = EFIS_HSI_rng
+-- print("AfterStart values: EFIS_HSI: " .. EFIS_HSI_rng .. ", B752_HSI: " .. B752_HSI_rng)
+function CheckEFIS_rng()
+	--if EFIST RALT changes then changes B757 RALT accordingly
+	if EFIS_HSI_rng ~= B752_HSI_rng then
+		
+		B752_HSI_rng = EFIS_HSI_rng
+		print("EFIS_HSI: " .. EFIS_HSI_rng .. ", B752_HSI: " .. B752_HSI_rng)
+			
+	else
+		-- no change - nothing to do
+	end 
+end
+do_often ("CheckEFIS_rng()")
+
+
+-- EFIS Map Mode knob
+DataRef("B752_HSI_mode" ,"1-sim/ndpanel/1/hsiModeRotary","writeable")			-- B752 HSI mode has 6 positions. 0 = FULL ILS, 1 = FULL VOR, 2 = EXP ILS, 3 = EXP VOR, 4 = MAP, 5 = PLN
+DataRef("EFIS_HSI_mode","sim/cockpit/switches/EFIS_map_submode","readonly")		-- EFIS HSI mode has 4 positions. 0 = APP, 1 = VOR, 2 = MAP, 4 = PLN
+
+-- On start, make the B752 HSI mode = EFIS HSI mode
+--B752_HSI_mode = EFIS_HSI_mode
+EFIS_HSI_prev_mode = EFIS_HSI_mode
+
+function CheckEFIS_mode()
+	--if EFIS HSI mode changes then changes B757 HSI Mode accordingly
+	if EFIS_HSI_mode ~= EFIS_HSI_prev_mode then
+		-- there was a change. so now we interpret current value and adjust B752 accordingly
+		if EFIS_HSI_mode == 0 then		-- APP mode
+			B752_HSI_mode = 2
+		
+		elseif EFIS_HSI_mode == 1 then	-- VOR mode
+			B752_HSI_mode = 3
+		
+		elseif EFIS_HSI_mode == 2 then	-- MAP mode
+			B752_HSI_mode = 4
+		
+		elseif EFIS_HSI_mode == 4 then	-- PLN mode
+			B752_HSI_mode = 5	
+		
+		end
+		
+		EFIS_HSI_prev_mode = EFIS_HSI_mode
+		print("EFIS_HSI: " .. EFIS_HSI_mode .. ", EFIS_HSI_prev: " .. EFIS_HSI_prev_mode .. ", B752_HSI: " .. B752_HSI_mode)
+			
+	else
+		-- no change - nothing to do
+	end 
+end
+do_often ("CheckEFIS_mode()")
+
+-- require "arcaze"	
+	-- -- HID stuff here
+	-- EFIS = hid_open(1240,62630)
+	-- if EFIS == nil then
+		-- print("Device not open :(")
+	-- else
+		-- print("YAY! Device DID open ")
+	-- end
+	
+	-- local numvars
+	-- local var1
+	-- local var2
+	-- local var3
+	-- local var4
+	-- --numvars,var1,var2,var3,var4=hid_read_timeout(EFIS,4,100)
+	-- --print(var1 .. ", " .. var2 .. ", " .. var3 .. ", ")
+	
 
 end
